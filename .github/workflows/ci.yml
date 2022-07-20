@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags-ignore: [ '*' ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Create Artifacts
+      run: cargo build --release --examples --verbose
+    - name: Create Archive (Ubuntu)
+      run: |
+        RUST_TARGET=`rustup show active-toolchain | sed -e 's/[^-]*-\(.*\)\s.*/\1/'`
+        tar -C ./target/release/examples/ -zcf pci-${RUST_TARGET}.tar.gz lspci
+        echo "RUST_TARGET=${RUST_TARGET}" >> $GITHUB_ENV
+        echo "ARTIFACT_PATH=pci-${RUST_TARGET}.tar.gz" >> $GITHUB_ENV
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3.0.0
+      with:
+        name: ${{ env.RUST_TARGET }}
+        path: ${{ env.ARTIFACT_PATH }}
+        retention-days: 1

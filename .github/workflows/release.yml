@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: [ '*' ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create Artifacts
+      run: cargo build --release --examples --verbose
+    - name: Create Archive (Ubuntu)
+      run: |
+        RUST_TARGET=`rustup show active-toolchain | sed -e 's/[^-]*-\(.*\)\s.*/\1/'`
+        tar -C ./target/release/examples/ -zcf pci-${GITHUB_REF_NAME}-${RUST_TARGET}.tar.gz lspci
+        echo "RUST_TARGET=${RUST_TARGET}" >> $GITHUB_ENV
+        echo "ARTIFACT_PATH=pci-${GITHUB_REF_NAME}-${RUST_TARGET}.tar.gz" >> $GITHUB_ENV
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3.0.0
+      with:
+        name: ${{ env.RUST_TARGET }}
+        path: ${{ env.ARTIFACT_PATH }}
+        retention-days: 1
+
+  release:
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3.0.0
+      with:
+        path: artifacts
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        find ./artifacts -type f
+        gh config set prompt disabled
+        gh release create ${GITHUB_REF_NAME} ./artifacts/*/*  -t v${GITHUB_REF_NAME} -d
