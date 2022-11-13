@@ -5,6 +5,7 @@ use std::env;
 struct Option {
     n: bool,
     nn: bool,
+    v: bool,
 }
 
 fn main() {
@@ -16,6 +17,9 @@ fn main() {
             }
             "-nn" => {
                 option.nn = true;
+            }
+            "-v" => {
+                option.v = true;
             }
             _ => {}
         }
@@ -99,5 +103,40 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
         println!();
     } else {
         println!(" (rev {:02x})", cfg.revision_id());
+    }
+
+    if !option.v {
+        return;
+    }
+
+    if let Some(t0) = cfg.get_type0_header() {
+        for bar in t0.bars() {
+            if bar.bar() == 0 {
+                continue;
+            }
+
+            if bar.io_space() {
+                print!("        I/O ports at {:04x}", bar.bar());
+            } else {
+                print!("        Memory at {:08x} (", bar.bar());
+
+                if bar.b64() {
+                    print!("64-bit");
+                } else if bar.b32() {
+                    print!("32-bit");
+                } else if bar.b16() {
+                    print!("low-1M");
+                } else {
+                    print!("type 3");
+                }
+
+                print!(
+                    ", {}prefetchable)",
+                    if bar.prefetchable() { "" } else { "non-" }
+                );
+            }
+
+            println!();
+        }
     }
 }

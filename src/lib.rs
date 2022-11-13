@@ -11,9 +11,27 @@ const OFFSET_CACHE_LINE_SIZE: u8 = 0x0C;
 const OFFSET_CAPABILITIES_POINTER: u8 = 0x34;
 const OFFSET_INTERRUPT_LINE: u8 = 0x3C;
 
+const OFFSET_TYPE0_BAR0: u8 = 0x10;
+const OFFSET_TYPE0_BAR1: u8 = 0x14;
+const OFFSET_TYPE0_BAR2: u8 = 0x18;
+const OFFSET_TYPE0_BAR3: u8 = 0x1C;
+const OFFSET_TYPE0_BAR4: u8 = 0x20;
+const OFFSET_TYPE0_BAR5: u8 = 0x24;
+
 const OFFSET_TYPE1_BAR0: u8 = 0x10;
 const OFFSET_TYPE1_BAR1: u8 = 0x14;
 const OFFSET_TYPE1_PRIMARY_BUS_NUM: u8 = 0x18;
+
+const OFFSET_BAR_TYPE_MASK: u32 = 0x01;
+const OFFSET_BAR_TYPE_IO: u32 = 0x01;
+
+const OFFSET_BAR_ADDRSPACE_MASK: u32 = 0x06;
+const OFFSET_BAR_ADDRSPACE_16BIT: u32 = 0x02;
+const OFFSET_BAR_ADDRSPACE_32BIT: u32 = 0x00;
+const OFFSET_BAR_ADDRSPACE_64BIT: u32 = 0x04;
+
+const OFFSET_BAR_PREFETCH_MASK: u32 = 0x08;
+const OFFSET_BAR_PREFETCH_ENABLE: u32 = 0x08;
 
 const NOT_USED: u16 = 0xFFFF;
 
@@ -149,6 +167,41 @@ impl PciConfig {
         self.interrupt_pin
     }
 
+    pub fn get_type0_header(&self) -> Option<PciConfigType0> {
+        if !self.header_type().type0() {
+            return None;
+        }
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR0);
+        let bar0 = io::read32(CONFIG_DATA);
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR1);
+        let bar1 = io::read32(CONFIG_DATA);
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR2);
+        let bar2 = io::read32(CONFIG_DATA);
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR3);
+        let bar3 = io::read32(CONFIG_DATA);
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR4);
+        let bar4 = io::read32(CONFIG_DATA);
+
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR5);
+        let bar5 = io::read32(CONFIG_DATA);
+
+        let t0 = PciConfigType0 {
+            bar0,
+            bar1,
+            bar2,
+            bar3,
+            bar4,
+            bar5,
+        };
+
+        Some(t0)
+    }
+
     pub fn get_type1_header(&self) -> Option<PciConfigType1> {
         if !self.header_type().type1() {
             return None;
@@ -186,6 +239,90 @@ impl PciConfig {
 }
 
 #[derive(Clone, Debug)]
+pub struct PciConfigType0 {
+    bar0: u32,
+    bar1: u32,
+    bar2: u32,
+    bar3: u32,
+    bar4: u32,
+    bar5: u32,
+    // TODO:
+}
+
+impl PciConfigType0 {
+    pub fn bar0(&self) -> u32 {
+        self.bar0
+    }
+
+    pub fn bar1(&self) -> u32 {
+        self.bar1
+    }
+
+    pub fn bar2(&self) -> u32 {
+        self.bar2
+    }
+
+    pub fn bar3(&self) -> u32 {
+        self.bar3
+    }
+
+    pub fn bar4(&self) -> u32 {
+        self.bar4
+    }
+
+    pub fn bar5(&self) -> u32 {
+        self.bar5
+    }
+
+    pub fn bars(&self) -> Vec<PciBaseAddress> {
+        let mut addrs = vec![];
+
+        let addr = PciBaseAddress::from(self.bar0, self.bar1);
+        let mut skip = addr.b64();
+        addrs.push(addr);
+
+        if !skip {
+            let addr = PciBaseAddress::from(self.bar1, self.bar2);
+            skip = addr.b64();
+            addrs.push(addr);
+        } else {
+            skip = false;
+        }
+
+        if !skip {
+            let addr = PciBaseAddress::from(self.bar2, self.bar3);
+            skip = addr.b64();
+            addrs.push(addr);
+        } else {
+            skip = false;
+        }
+
+        if !skip {
+            let addr = PciBaseAddress::from(self.bar3, self.bar4);
+            skip = addr.b64();
+            addrs.push(addr);
+        } else {
+            skip = false;
+        }
+
+        if !skip {
+            let addr = PciBaseAddress::from(self.bar4, self.bar5);
+            skip = addr.b64();
+            addrs.push(addr);
+        } else {
+            skip = false;
+        }
+
+        if !skip {
+            let addr = PciBaseAddress::from(self.bar5, 0);
+            addrs.push(addr);
+        }
+
+        addrs
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct PciConfigType1 {
     bar0: u32,
     bar1: u32,
@@ -219,6 +356,63 @@ impl PciConfigType1 {
 
     pub fn secondary_latency_timer(&self) -> u8 {
         self.secondary_latency_timer
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PciBaseAddress {
+    bar: u64,
+    io_space: bool,
+    b16: bool,
+    b32: bool,
+    b64: bool,
+    prefetchable: bool,
+}
+
+impl PciBaseAddress {
+    pub fn from(bar: u32, nbar: u32) -> Self {
+        let mut addr = PciBaseAddress::default();
+
+        if (bar & OFFSET_BAR_TYPE_MASK) == OFFSET_BAR_TYPE_IO {
+            addr.bar = (bar & 0xFFFF_FFFC) as u64;
+            addr.io_space = true;
+            addr
+        } else {
+            addr.bar = if (bar & OFFSET_BAR_ADDRSPACE_MASK) == OFFSET_BAR_ADDRSPACE_64BIT {
+                ((nbar as u64) << 32) + ((bar & 0xFFFF_FFF0) as u64)
+            } else {
+                (bar & 0xFFFF_FFF0) as u64
+            };
+            addr.b16 = (bar & OFFSET_BAR_ADDRSPACE_MASK) == OFFSET_BAR_ADDRSPACE_16BIT;
+            addr.b32 = (bar & OFFSET_BAR_ADDRSPACE_MASK) == OFFSET_BAR_ADDRSPACE_32BIT;
+            addr.b64 = (bar & OFFSET_BAR_ADDRSPACE_MASK) == OFFSET_BAR_ADDRSPACE_64BIT;
+            addr.prefetchable = (bar & OFFSET_BAR_PREFETCH_MASK) == OFFSET_BAR_PREFETCH_ENABLE;
+            addr
+        }
+    }
+
+    pub fn bar(&self) -> u64 {
+        self.bar
+    }
+
+    pub fn io_space(&self) -> bool {
+        self.io_space
+    }
+
+    pub fn b16(&self) -> bool {
+        self.b16
+    }
+
+    pub fn b32(&self) -> bool {
+        self.b32
+    }
+
+    pub fn b64(&self) -> bool {
+        self.b64
+    }
+
+    pub fn prefetchable(&self) -> bool {
+        self.prefetchable
     }
 }
 
@@ -351,8 +545,12 @@ impl ClassCode {
 pub struct HeaderType(u8);
 
 impl HeaderType {
+    pub fn type0(&self) -> bool {
+        self.get_type() == 0
+    }
+
     pub fn type1(&self) -> bool {
-        self.get_bool(0)
+        self.get_type() == 1
     }
 
     pub fn multi_functoin_device(&self) -> bool {
@@ -362,6 +560,10 @@ impl HeaderType {
     fn get_bool(&self, bit: u8) -> bool {
         let mask: u8 = 1 << bit;
         (self.0 & mask) == mask
+    }
+
+    fn get_type(&self) -> u8 {
+        self.0 & 0x7F
     }
 }
 
