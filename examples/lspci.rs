@@ -139,4 +139,15 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
             println!();
         }
     }
+
+    if cfg.status().capabilities_list() {
+        let mut cap_next = cfg.capabilities_pointer();
+        let mut capability = cfg.capability();
+        while capability.is_some() {
+            let cap = capability.unwrap();
+            println!("        Capabilities: [{:02x}] {:?}", cap_next, cap.id());
+            cap_next = cap.next_pointer();
+            capability = cap.next(&cfg);
+        }
+    }
 }

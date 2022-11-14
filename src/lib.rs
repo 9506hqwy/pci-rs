@@ -35,6 +35,33 @@ const OFFSET_BAR_PREFETCH_ENABLE: u32 = 0x08;
 
 const NOT_USED: u16 = 0xFFFF;
 
+#[derive(Debug)]
+#[repr(u8)]
+pub enum CapabilityId {
+    Null = 0x00,
+    Pm = 0x01,
+    Agp = 0x02,
+    Vpd = 0x03,
+    SlotId = 0x04,
+    Msi = 0x05,
+    CompatPciHotSwap = 0x06,
+    PciX = 0x07,
+    HyperTransport = 0x08,
+    VendorSpecific = 0x09,
+    DebugPort = 0x0A,
+    CompatPciCrc = 0x0B,
+    PciHotPlug = 0x0C,
+    PciBridgeSubVendorId = 0x0D,
+    Agp8x = 0x0E,
+    SecureDevice = 0x0F,
+    PciE = 0x10,
+    MsiX = 0x11,
+    SataConfig = 0x12,
+    AdvanedFeature = 0x13,
+    EnhancedAllocation = 0x14,
+    FlatteningPortalBridge = 0x15,
+}
+
 pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
     set_config(bus, device, func, OFFSET_VENDOR_ID);
     let value = io::read32(CONFIG_DATA);
@@ -236,6 +263,12 @@ impl PciConfig {
 
         Some(t1)
     }
+
+    pub fn capability(&self) -> Option<PciCapability> {
+        let value = (self.capabilities_pointer as u32) << 8;
+        let cap = PciCapability::from(value);
+        cap.next(self)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -413,6 +446,68 @@ impl PciBaseAddress {
 
     pub fn prefetchable(&self) -> bool {
         self.prefetchable
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct PciCapability {
+    id: u8,
+    next_pointer: u8,
+}
+
+impl PciCapability {
+    pub fn from(value: u32) -> Self {
+        PciCapability {
+            id: (value & 0x0000_00FF) as u8,
+            next_pointer: ((value & 0x0000_FF00) >> 8) as u8,
+        }
+    }
+
+    pub fn id(&self) -> Option<CapabilityId> {
+        match self.id {
+            0x00 => Some(CapabilityId::Null),
+            0x01 => Some(CapabilityId::Pm),
+            0x02 => Some(CapabilityId::Agp),
+            0x03 => Some(CapabilityId::Vpd),
+            0x04 => Some(CapabilityId::SlotId),
+            0x05 => Some(CapabilityId::Msi),
+            0x06 => Some(CapabilityId::CompatPciHotSwap),
+            0x07 => Some(CapabilityId::PciX),
+            0x08 => Some(CapabilityId::HyperTransport),
+            0x09 => Some(CapabilityId::VendorSpecific),
+            0x0A => Some(CapabilityId::DebugPort),
+            0x0B => Some(CapabilityId::CompatPciCrc),
+            0x0C => Some(CapabilityId::PciHotPlug),
+            0x0D => Some(CapabilityId::PciBridgeSubVendorId),
+            0x0E => Some(CapabilityId::Agp8x),
+            0x0F => Some(CapabilityId::SecureDevice),
+            0x10 => Some(CapabilityId::PciE),
+            0x11 => Some(CapabilityId::MsiX),
+            0x12 => Some(CapabilityId::SataConfig),
+            0x13 => Some(CapabilityId::AdvanedFeature),
+            0x14 => Some(CapabilityId::EnhancedAllocation),
+            0x15 => Some(CapabilityId::FlatteningPortalBridge),
+            _ => None,
+        }
+    }
+
+    pub fn next_pointer(&self) -> u8 {
+        self.next_pointer
+    }
+
+    pub fn next(&self, config: &PciConfig) -> Option<PciCapability> {
+        if self.next_pointer == 0 {
+            None
+        } else {
+            set_config(
+                config.slot.0,
+                config.slot.1,
+                config.slot.2,
+                self.next_pointer,
+            );
+            let data = io::read32(CONFIG_DATA);
+            Some(PciCapability::from(data))
+        }
     }
 }
 
