@@ -17,6 +17,9 @@ const OFFSET_TYPE0_BAR2: u8 = 0x18;
 const OFFSET_TYPE0_BAR3: u8 = 0x1C;
 const OFFSET_TYPE0_BAR4: u8 = 0x20;
 const OFFSET_TYPE0_BAR5: u8 = 0x24;
+const OFFSET_TYPE0_CARDBUS: u8 = 0x28;
+const OFFSET_TYPE0_SUBSYSTEM: u8 = 0x2C;
+const OFFSET_TYPE0_EXPANSION: u8 = 0x30;
 
 const OFFSET_TYPE1_BAR0: u8 = 0x10;
 const OFFSET_TYPE1_BAR1: u8 = 0x14;
@@ -217,6 +220,27 @@ impl PciConfig {
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR5);
         let bar5 = io::read32(CONFIG_DATA);
 
+        set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_CARDBUS);
+        let cardbus_cis_pointer = io::read32(CONFIG_DATA);
+
+        set_config(
+            self.slot.0,
+            self.slot.1,
+            self.slot.2,
+            OFFSET_TYPE0_SUBSYSTEM,
+        );
+        let value = io::read32(CONFIG_DATA);
+        let subsystem_vendor_id = extract_u16(value, 0);
+        let subsystem_id = extract_u16(value, 16);
+
+        set_config(
+            self.slot.0,
+            self.slot.1,
+            self.slot.2,
+            OFFSET_TYPE0_EXPANSION,
+        );
+        let expansion_rom = io::read32(CONFIG_DATA);
+
         let t0 = PciConfigType0 {
             bar0,
             bar1,
@@ -224,6 +248,10 @@ impl PciConfig {
             bar3,
             bar4,
             bar5,
+            cardbus_cis_pointer,
+            subsystem_vendor_id,
+            subsystem_id,
+            expansion_rom,
         };
 
         Some(t0)
@@ -279,6 +307,10 @@ pub struct PciConfigType0 {
     bar3: u32,
     bar4: u32,
     bar5: u32,
+    cardbus_cis_pointer: u32,
+    subsystem_vendor_id: u16,
+    subsystem_id: u16,
+    expansion_rom: u32,
     // TODO:
 }
 
@@ -305,6 +337,22 @@ impl PciConfigType0 {
 
     pub fn bar5(&self) -> u32 {
         self.bar5
+    }
+
+    pub fn cardbus_cis_pointer(&self) -> u32 {
+        self.cardbus_cis_pointer
+    }
+
+    pub fn subsystem_vendor_id(&self) -> u16 {
+        self.subsystem_vendor_id
+    }
+
+    pub fn subsystem_id(&self) -> u16 {
+        self.subsystem_id
+    }
+
+    pub fn expansion_rom(&self) -> u32 {
+        self.expansion_rom
     }
 
     pub fn bars(&self) -> Vec<PciBaseAddress> {

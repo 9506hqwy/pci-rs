@@ -110,6 +110,21 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
     }
 
     if let Some(t0) = cfg.get_type0_header() {
+        if t0.subsystem_vendor_id() != 0 {
+            if let Some(subsystem) =
+                device.get_subsystem(t0.subsystem_vendor_id(), t0.subsystem_id())
+            {
+                println!("        Subsystem: {} {}", vendor.name(), subsystem.name());
+            } else {
+                let subsystem = ids::get_vendor(t0.subsystem_vendor_id()).unwrap();
+                println!(
+                    "        Subsystem: {} Device {:04x}",
+                    subsystem.name(),
+                    t0.subsystem_id()
+                );
+            }
+        }
+
         for bar in t0.bars() {
             if bar.bar() == 0 {
                 continue;
