@@ -109,6 +109,21 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
         return;
     }
 
+    let cmd = cfg.command();
+    println!("        Control: I/O{} Mem{} BusMaster{} SpecCycle{} MemWINV{} VGASnoop{} ParErr{} Stepping{} SERR{} FastB2B{} DisINTx{}",
+             flag(cmd.io_space_enable()),
+             flag(cmd.memory_space_enable()),
+             flag(cmd.bus_master_enable()),
+             flag(cmd.special_cycle_enable()),
+             flag(cmd.memory_write_and_invalidate()),
+             flag(cmd.vga_palette_snoop()),
+             flag(cmd.parity_error_response()),
+             flag(cmd.idsel_stepping_wait_cycle_control()),
+             flag(cmd.serr_enable()),
+             flag(cmd.fast_back_to_back_transactions_enable()),
+             flag(cmd.interrupt_disable()),
+    );
+
     if let Some(t0) = cfg.get_type0_header() {
         if t0.subsystem_vendor_id() != 0 {
             if let Some(subsystem) =
@@ -164,5 +179,13 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
             cap_next = cap.next_pointer();
             capability = cap.next(&cfg);
         }
+    }
+}
+
+fn flag(f: bool) -> &'static str {
+    if f {
+        "+"
+    } else {
+        "-"
     }
 }
