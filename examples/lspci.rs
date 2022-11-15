@@ -124,6 +124,27 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
              flag(cmd.interrupt_disable()),
     );
 
+    let status = cfg.status();
+    println!("        Status: Cap{} 66MHz{} UDF{} FastB2B{} ParErr{} DEVSEL={} >TAbort{} <TAbort{} <MAbort{} >SERR{} <PERR{} INTx{}",
+             flag(status.capabilities_list()),
+             flag(status.mhz_66_capable()),
+             flag(status.user_definable_features()),
+             flag(status.fast_back_to_back_transactions_capable()),
+             flag(status.master_data_parity_error()),
+             match status.devsel_timing() {
+                 0 => "fast",
+                 1 => "medium",
+                 2 => "slow",
+                 _ => "",
+             },
+             flag(status.signaled_target_abort()),
+             flag(status.received_target_abort()),
+             flag(status.signaled_system_error()),
+             flag(status.received_master_abort()),
+             flag(status.detected_parity_error()),
+             flag(status.interrupt_status()),
+    );
+
     if let Some(t0) = cfg.get_type0_header() {
         if t0.subsystem_vendor_id() != 0 {
             if let Some(subsystem) =

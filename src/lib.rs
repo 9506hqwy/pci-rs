@@ -629,6 +629,10 @@ impl Status {
         self.get_bool(5)
     }
 
+    pub fn user_definable_features(&self) -> bool {
+        self.get_bool(6)
+    }
+
     pub fn fast_back_to_back_transactions_capable(&self) -> bool {
         self.get_bool(7)
     }
