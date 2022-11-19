@@ -145,6 +145,17 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
              flag(status.interrupt_status()),
     );
 
+    if cmd.bus_master_enable() {
+        print!("        Latency: {}", cfg.master_latency_timer());
+
+        let cache_line_size = cfg.cache_line_size();
+        if cache_line_size != 0 {
+            print!(", Cache Line Size: {} bytes", cache_line_size * 4);
+        }
+
+        println!();
+    }
+
     if let Some(t0) = cfg.get_type0_header() {
         if t0.subsystem_vendor_id() != 0 {
             if let Some(subsystem) =
