@@ -24,6 +24,7 @@ const OFFSET_TYPE0_EXPANSION: u8 = 0x30;
 const OFFSET_TYPE1_BAR0: u8 = 0x10;
 const OFFSET_TYPE1_BAR1: u8 = 0x14;
 const OFFSET_TYPE1_PRIMARY_BUS_NUM: u8 = 0x18;
+const OFFSET_TYPE1_EXPANSION: u8 = 0x38;
 
 const OFFSET_BAR_TYPE_MASK: u32 = 0x01;
 const OFFSET_BAR_TYPE_IO: u32 = 0x01;
@@ -280,6 +281,14 @@ impl PciConfig {
         let subordinate_bus_number = extract_u8(value, 16);
         let secondary_latency_timer = extract_u8(value, 24);
 
+        set_config(
+            self.slot.0,
+            self.slot.1,
+            self.slot.2,
+            OFFSET_TYPE1_EXPANSION,
+        );
+        let expansion_rom = io::read32(CONFIG_DATA);
+
         let t1 = PciConfigType1 {
             bar0,
             bar1,
@@ -287,6 +296,7 @@ impl PciConfig {
             secondary_bus_number,
             subordinate_bus_number,
             secondary_latency_timer,
+            expansion_rom,
         };
 
         Some(t1)
@@ -411,6 +421,7 @@ pub struct PciConfigType1 {
     secondary_bus_number: u8,
     subordinate_bus_number: u8,
     secondary_latency_timer: u8,
+    expansion_rom: u32,
     // TODO:
 }
 
@@ -437,6 +448,10 @@ impl PciConfigType1 {
 
     pub fn secondary_latency_timer(&self) -> u8 {
         self.secondary_latency_timer
+    }
+
+    pub fn expansion_rom(&self) -> u32 {
+        self.expansion_rom
     }
 }
 

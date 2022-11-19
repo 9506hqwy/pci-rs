@@ -202,6 +202,32 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
         }
     }
 
+    let rom = if let Some(t0) = cfg.get_type0_header() {
+        Some(t0.expansion_rom())
+    } else if let Some(t1) = cfg.get_type1_header() {
+        Some(t1.expansion_rom())
+    } else {
+        None
+    };
+
+    if let Some(rom) = rom {
+        if rom != 0 {
+            print!("        Expansion  ROM at ");
+
+            if (rom & 0xFFFF_F800) != 0 {
+                print!("<ignored>");
+            } else {
+                print!("<unassigned>");
+            }
+
+            if (rom & 0x01) == 0 {
+                print!(" [disabled]");
+            }
+
+            println!();
+        }
+    }
+
     if cfg.status().capabilities_list() {
         let mut cap_next = cfg.capabilities_pointer();
         let mut capability = cfg.capability();
