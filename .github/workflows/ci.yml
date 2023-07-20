@@ -26,7 +26,7 @@ jobs:
         echo "RUST_TARGET=${RUST_TARGET}" >> $GITHUB_ENV
         echo "ARTIFACT_PATH=pci-${RUST_TARGET}.tar.gz" >> $GITHUB_ENV
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3.0.0
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ env.RUST_TARGET }}
         path: ${{ env.ARTIFACT_PATH }}

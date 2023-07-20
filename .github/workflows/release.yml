@@ -23,7 +23,7 @@ jobs:
         echo "RUST_TARGET=${RUST_TARGET}" >> $GITHUB_ENV
         echo "ARTIFACT_PATH=pci-${GITHUB_REF_NAME}-${RUST_TARGET}.tar.gz" >> $GITHUB_ENV
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3.0.0
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ env.RUST_TARGET }}
         path: ${{ env.ARTIFACT_PATH }}
@@ -37,7 +37,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/download-artifact@v3.0.0
+    - uses: actions/download-artifact@v3
       with:
         path: artifacts
     - name: Create Release
