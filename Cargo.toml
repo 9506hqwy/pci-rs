@@ -23,3 +23,4 @@ path = "tools/gen.rs"
 [profile.release]
 strip = "symbols"
 lto = true
+opt-level = "z"
