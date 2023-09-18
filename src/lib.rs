@@ -1,5 +1,7 @@
+pub mod error;
 pub mod ids;
 pub mod io;
+pub mod parser;
 
 const CONFIG_ADDRESS: u16 = 0x0CF8;
 const CONFIG_DATA: u16 = 0x0CFC;
@@ -745,4 +747,22 @@ fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
     config |= (bus as u32) << 16;
     config |= 0x8000_0000;
     io::write32(CONFIG_ADDRESS, config);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    #[test]
+    fn parse() {
+        let mut f = File::open("src/pciids/pci.ids").unwrap();
+        let mut content = String::new();
+        f.read_to_string(&mut content).unwrap();
+
+        let (v, c) = parser::parse(&content).unwrap();
+        assert!(!v.is_empty());
+        assert!(!c.is_empty());
+    }
 }
