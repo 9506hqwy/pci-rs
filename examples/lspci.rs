@@ -204,10 +204,8 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
 
     let rom = if let Some(t0) = cfg.get_type0_header() {
         Some(t0.expansion_rom())
-    } else if let Some(t1) = cfg.get_type1_header() {
-        Some(t1.expansion_rom())
     } else {
-        None
+        cfg.get_type1_header().map(|t1| t1.expansion_rom())
     };
 
     if let Some(rom) = rom {
@@ -235,7 +233,7 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
             let cap = capability.unwrap();
             println!("        Capabilities: [{:02x}] {:?}", cap_next, cap.id());
             cap_next = cap.next_pointer();
-            capability = cap.next(&cfg);
+            capability = cap.next(cfg);
         }
     }
 }

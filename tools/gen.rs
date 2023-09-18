@@ -17,94 +17,90 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut class_sec = false;
 
-    for line in reader.lines() {
-        if let Ok(line) = line {
-            if line.len() < 4 {
-                continue;
-            }
+    for line in reader.lines().flatten() {
+        if line.len() < 4 {
+            continue;
+        }
 
-            if line.starts_with("#") {
-                continue;
-            }
+        if line.starts_with('#') {
+            continue;
+        }
 
-            if !class_sec {
-                if let Some((id, name)) = parse4_name(&line) {
-                    if vendor.id != 0 {
-                        vendors.push(vendor);
+        if !class_sec {
+            if let Some((id, name)) = parse4_name(&line) {
+                if vendor.id != 0 {
+                    vendors.push(vendor);
+                }
+
+                vendor = Vendor {
+                    id,
+                    name,
+                    devices: vec![],
+                };
+            } else if let Some(result) = line.strip_prefix("\t\t") {
+                if let Some((sub_vendor, name)) = parse4_name(result) {
+                    if let Some((sub_device, name)) = parse4_name(&name) {
+                        let subsystem = SubSystem {
+                            sub_vendor,
+                            sub_device,
+                            name,
+                        };
+
+                        vendor
+                            .devices
+                            .last_mut()
+                            .unwrap()
+                            .subsystems
+                            .push(subsystem);
                     }
-
-                    vendor = Vendor {
+                }
+            } else if let Some(result) = line.strip_prefix('\t') {
+                if let Some((id, name)) = parse4_name(result) {
+                    let device = Device {
                         id,
                         name,
-                        devices: vec![],
+                        subsystems: vec![],
                     };
-                } else if line.starts_with("\t\t") {
-                    if let Some((sub_vendor, name)) = parse4_name(&line[2..]) {
-                        if let Some((sub_device, name)) = parse4_name(&name) {
-                            let subsystem = SubSystem {
-                                sub_vendor,
-                                sub_device,
-                                name,
-                            };
 
-                            vendor
-                                .devices
-                                .last_mut()
-                                .unwrap()
-                                .subsystems
-                                .push(subsystem);
-                        }
-                    }
-                } else if line.starts_with("\t") {
-                    if let Some((id, name)) = parse4_name(&line[1..]) {
-                        let device = Device {
-                            id,
-                            name,
-                            subsystems: vec![],
-                        };
-
-                        vendor.devices.push(device);
-                    }
-                } else if line.starts_with("C ") {
-                    class_sec = true;
-                    if let Some((id, name)) = parse2_name(&line[2..]) {
-                        cls = BaseClass {
-                            id,
-                            name,
-                            sub_classes: vec![],
-                        };
-                    }
+                    vendor.devices.push(device);
                 }
-            } else {
-                if line.starts_with("C ") {
-                    if let Some((id, name)) = parse2_name(&line[2..]) {
-                        if cls.id != 0 {
-                            classes.push(cls);
-                        }
-
-                        cls = BaseClass {
-                            id,
-                            name,
-                            sub_classes: vec![],
-                        };
-                    }
-                } else if line.starts_with("\t\t") {
-                    if let Some((id, name)) = parse2_name(&line[2..]) {
-                        let prog_if = ProgIf { id, name };
-
-                        cls.sub_classes.last_mut().unwrap().prog_ifs.push(prog_if);
-                    }
-                } else if line.starts_with("\t") {
-                    if let Some((id, name)) = parse2_name(&line[1..]) {
-                        let sub_class = SubClass {
-                            id,
-                            name,
-                            prog_ifs: vec![],
-                        };
-
-                        cls.sub_classes.push(sub_class);
-                    }
+            } else if let Some(result) = line.strip_prefix("C ") {
+                class_sec = true;
+                if let Some((id, name)) = parse2_name(result) {
+                    cls = BaseClass {
+                        id,
+                        name,
+                        sub_classes: vec![],
+                    };
                 }
+            }
+        } else if let Some(result) = line.strip_prefix("C ") {
+            if let Some((id, name)) = parse2_name(result) {
+                if cls.id != 0 {
+                    classes.push(cls);
+                }
+
+                cls = BaseClass {
+                    id,
+                    name,
+                    sub_classes: vec![],
+                };
+            }
+        } else if let Some(result) = line.strip_prefix("\t\t") {
+            if let Some((id, name)) = parse2_name(result) {
+                let prog_if = ProgIf { id, name };
+
+                cls.sub_classes.last_mut().unwrap().prog_ifs.push(prog_if);
+            }
+        } else if let Some(result) = line.strip_prefix('\t') {
+            if let Some((id, name)) = parse2_name(result) {
+                let sub_class = SubClass {
+                    id,
+                    name,
+                    prog_ifs: vec![],
+                };
+
+                cls.sub_classes.push(sub_class);
             }
         }
     }
@@ -143,7 +139,7 @@ fn gen(vendors: Vec<Vendor>, classes: Vec<BaseClass>) -> Result<String, Box<dyn 
 
         let id = vendor.id;
         let name = &vendor.name;
-        if vendor.devices.len() != 0 {
+        if !vendor.devices.is_empty() {
             vmodels.push(quote! {
                 let mut d = vec![];
                 #(#devices)*
@@ -169,7 +165,7 @@ fn gen(vendors: Vec<Vendor>, classes: Vec<BaseClass>) -> Result<String, Box<dyn 
 
         let id = cls.id;
         let name = &cls.name;
-        if cls.sub_classes.len() != 0 {
+        if !cls.sub_classes.is_empty() {
             cmodels.push(quote! {
                 let mut s = vec![];
                 #(#sub_classes)*
