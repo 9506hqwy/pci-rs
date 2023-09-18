@@ -1,3 +1,9 @@
-/target/
-Cargo.lock
+artifacts/
+target/
+
 *~
+*.profraw
+
+Cargo.lock
+coverage.lcov
+default.profdata
