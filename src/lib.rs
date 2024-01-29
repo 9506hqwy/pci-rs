@@ -1,6 +1,6 @@
 pub mod error;
 pub mod ids;
-pub mod io;
+pub mod io_port;
 pub mod parser;
 
 const CONFIG_ADDRESS: u16 = 0x0CF8;
@@ -70,7 +70,7 @@ pub enum CapabilityId {
 
 pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
     set_config(bus, device, func, OFFSET_VENDOR_ID);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let vendor_id = extract_u16(value, 0);
     if vendor_id == NOT_USED {
         return None;
@@ -82,30 +82,30 @@ pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
     }
 
     set_config(bus, device, func, OFFSET_COMMAND);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let command = extract_u16(value, 0);
     let status = extract_u16(value, 16);
 
     set_config(bus, device, func, OFFSET_REVISION_ID);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let revision_id = extract_u8(value, 0);
     let prog_if = extract_u8(value, 8);
     let sub_class = extract_u8(value, 16);
     let base_class = extract_u8(value, 24);
 
     set_config(bus, device, func, OFFSET_CACHE_LINE_SIZE);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let cache_line_size = extract_u8(value, 0);
     let master_latency_timer = extract_u8(value, 8);
     let header_type = extract_u8(value, 16);
     let bist = extract_u8(value, 24);
 
     set_config(bus, device, func, OFFSET_CAPABILITIES_POINTER);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let capabilities_pointer = extract_u8(value, 0);
 
     set_config(bus, device, func, OFFSET_INTERRUPT_LINE);
-    let value = io::read32(CONFIG_DATA);
+    let value = io_port::read32(CONFIG_DATA);
     let interrupt_line = extract_u8(value, 0);
     let interrupt_pin = extract_u8(value, 8);
 
@@ -206,25 +206,25 @@ impl PciConfig {
         }
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR0);
-        let bar0 = io::read32(CONFIG_DATA);
+        let bar0 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR1);
-        let bar1 = io::read32(CONFIG_DATA);
+        let bar1 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR2);
-        let bar2 = io::read32(CONFIG_DATA);
+        let bar2 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR3);
-        let bar3 = io::read32(CONFIG_DATA);
+        let bar3 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR4);
-        let bar4 = io::read32(CONFIG_DATA);
+        let bar4 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_BAR5);
-        let bar5 = io::read32(CONFIG_DATA);
+        let bar5 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE0_CARDBUS);
-        let cardbus_cis_pointer = io::read32(CONFIG_DATA);
+        let cardbus_cis_pointer = io_port::read32(CONFIG_DATA);
 
         set_config(
             self.slot.0,
@@ -232,7 +232,7 @@ impl PciConfig {
             self.slot.2,
             OFFSET_TYPE0_SUBSYSTEM,
         );
-        let value = io::read32(CONFIG_DATA);
+        let value = io_port::read32(CONFIG_DATA);
         let subsystem_vendor_id = extract_u16(value, 0);
         let subsystem_id = extract_u16(value, 16);
 
@@ -242,7 +242,7 @@ impl PciConfig {
             self.slot.2,
             OFFSET_TYPE0_EXPANSION,
         );
-        let expansion_rom = io::read32(CONFIG_DATA);
+        let expansion_rom = io_port::read32(CONFIG_DATA);
 
         let t0 = PciConfigType0 {
             bar0,
@@ -266,10 +266,10 @@ impl PciConfig {
         }
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE1_BAR0);
-        let bar0 = io::read32(CONFIG_DATA);
+        let bar0 = io_port::read32(CONFIG_DATA);
 
         set_config(self.slot.0, self.slot.1, self.slot.2, OFFSET_TYPE1_BAR1);
-        let bar1 = io::read32(CONFIG_DATA);
+        let bar1 = io_port::read32(CONFIG_DATA);
 
         set_config(
             self.slot.0,
@@ -277,7 +277,7 @@ impl PciConfig {
             self.slot.2,
             OFFSET_TYPE1_PRIMARY_BUS_NUM,
         );
-        let value = io::read32(CONFIG_DATA);
+        let value = io_port::read32(CONFIG_DATA);
         let primary_bus_number = extract_u8(value, 0);
         let secondary_bus_number = extract_u8(value, 8);
         let subordinate_bus_number = extract_u8(value, 16);
@@ -289,7 +289,7 @@ impl PciConfig {
             self.slot.2,
             OFFSET_TYPE1_EXPANSION,
         );
-        let expansion_rom = io::read32(CONFIG_DATA);
+        let expansion_rom = io_port::read32(CONFIG_DATA);
 
         let t1 = PciConfigType1 {
             bar0,
@@ -570,7 +570,7 @@ impl PciCapability {
                 config.slot.2,
                 self.next_pointer,
             );
-            let data = io::read32(CONFIG_DATA);
+            let data = io_port::read32(CONFIG_DATA);
             Some(PciCapability::from(data))
         }
     }
@@ -746,7 +746,7 @@ fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
     config |= (device as u32) << 11;
     config |= (bus as u32) << 16;
     config |= 0x8000_0000;
-    io::write32(CONFIG_ADDRESS, config);
+    io_port::write32(CONFIG_ADDRESS, config);
 }
 
 #[cfg(test)]
