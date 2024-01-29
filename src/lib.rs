@@ -6,11 +6,20 @@ pub mod parser;
 use io_port::IoPort;
 
 const OFFSET_VENDOR_ID: u8 = 0x00;
+const OFFSET_DEVICE_ID: u8 = 0x02;
 const OFFSET_COMMAND: u8 = 0x04;
+const OFFSET_STATUS: u8 = 0x06;
 const OFFSET_REVISION_ID: u8 = 0x08;
+const OFFSET_PROG_INTF: u8 = 0x09;
+const OFFSET_SUB_CLASS: u8 = 0x0A;
+const OFFSET_BASE_CLASS: u8 = 0x0B;
 const OFFSET_CACHE_LINE_SIZE: u8 = 0x0C;
+const OFFSET_MASTER_LATENCY_TIMER: u8 = 0x0D;
+const OFFSET_HEADER_TYPE: u8 = 0x0E;
+const OFFSET_BIST: u8 = 0x0F;
 const OFFSET_CAPABILITIES_POINTER: u8 = 0x34;
 const OFFSET_INTERRUPT_LINE: u8 = 0x3C;
+const OFFSET_INTERRUPT_PIN: u8 = 0x3D;
 
 const OFFSET_TYPE0_BAR0: u8 = 0x10;
 const OFFSET_TYPE0_BAR1: u8 = 0x14;
@@ -19,12 +28,16 @@ const OFFSET_TYPE0_BAR3: u8 = 0x1C;
 const OFFSET_TYPE0_BAR4: u8 = 0x20;
 const OFFSET_TYPE0_BAR5: u8 = 0x24;
 const OFFSET_TYPE0_CARDBUS: u8 = 0x28;
-const OFFSET_TYPE0_SUBSYSTEM: u8 = 0x2C;
+const OFFSET_TYPE0_SUBSYSTEM_VENDOR_ID: u8 = 0x2C;
+const OFFSET_TYPE0_SUBSYSTEM_ID: u8 = 0x2E;
 const OFFSET_TYPE0_EXPANSION: u8 = 0x30;
 
 const OFFSET_TYPE1_BAR0: u8 = 0x10;
 const OFFSET_TYPE1_BAR1: u8 = 0x14;
 const OFFSET_TYPE1_PRIMARY_BUS_NUM: u8 = 0x18;
+const OFFSET_TYPE1_SECONDARY_BUS_NUM: u8 = 0x19;
+const OFFSET_TYPE1_SUBORDINATE_BUS_NUM: u8 = 0x1A;
+const OFFSET_TYPE1_SECONDARY_LATENCY_TIMER: u8 = 0x1B;
 const OFFSET_TYPE1_EXPANSION: u8 = 0x38;
 
 const OFFSET_BAR_TYPE_MASK: u32 = 0x01;
@@ -70,39 +83,29 @@ pub enum CapabilityId {
 pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
     let mut method = IoPort::new(bus, device, func);
 
-    let value = method.read32(OFFSET_VENDOR_ID);
-    let vendor_id = extract_u16(value, 0);
+    let vendor_id = method.read16(OFFSET_VENDOR_ID);
     if vendor_id == NOT_USED {
         return None;
     }
 
-    let device_id = extract_u16(value, 16);
+    let device_id = method.read16(OFFSET_DEVICE_ID);
     if device_id == NOT_USED {
         return None;
     }
 
-    let value = method.read32(OFFSET_COMMAND);
-    let command = extract_u16(value, 0);
-    let status = extract_u16(value, 16);
-
-    let value = method.read32(OFFSET_REVISION_ID);
-    let revision_id = extract_u8(value, 0);
-    let prog_if = extract_u8(value, 8);
-    let sub_class = extract_u8(value, 16);
-    let base_class = extract_u8(value, 24);
-
-    let value = method.read32(OFFSET_CACHE_LINE_SIZE);
-    let cache_line_size = extract_u8(value, 0);
-    let master_latency_timer = extract_u8(value, 8);
-    let header_type = extract_u8(value, 16);
-    let bist = extract_u8(value, 24);
-
-    let value = method.read32(OFFSET_CAPABILITIES_POINTER);
-    let capabilities_pointer = extract_u8(value, 0);
-
-    let value = method.read32(OFFSET_INTERRUPT_LINE);
-    let interrupt_line = extract_u8(value, 0);
-    let interrupt_pin = extract_u8(value, 8);
+    let command = method.read16(OFFSET_COMMAND);
+    let status = method.read16(OFFSET_STATUS);
+    let revision_id = method.read8(OFFSET_REVISION_ID);
+    let prog_if = method.read8(OFFSET_PROG_INTF);
+    let sub_class = method.read8(OFFSET_SUB_CLASS);
+    let base_class = method.read8(OFFSET_BASE_CLASS);
+    let cache_line_size = method.read8(OFFSET_CACHE_LINE_SIZE);
+    let master_latency_timer = method.read8(OFFSET_MASTER_LATENCY_TIMER);
+    let header_type = method.read8(OFFSET_HEADER_TYPE);
+    let bist = method.read8(OFFSET_BIST);
+    let capabilities_pointer = method.read8(OFFSET_CAPABILITIES_POINTER);
+    let interrupt_line = method.read8(OFFSET_INTERRUPT_LINE);
+    let interrupt_pin = method.read8(OFFSET_INTERRUPT_PIN);
 
     let config = PciConfig {
         slot: (bus, device, func),
@@ -208,13 +211,9 @@ impl PciConfig {
         let bar3 = method.read32(OFFSET_TYPE0_BAR3);
         let bar4 = method.read32(OFFSET_TYPE0_BAR4);
         let bar5 = method.read32(OFFSET_TYPE0_BAR5);
-
         let cardbus_cis_pointer = method.read32(OFFSET_TYPE0_CARDBUS);
-
-        let value = method.read32(OFFSET_TYPE0_SUBSYSTEM);
-        let subsystem_vendor_id = extract_u16(value, 0);
-        let subsystem_id = extract_u16(value, 16);
-
+        let subsystem_vendor_id = method.read16(OFFSET_TYPE0_SUBSYSTEM_VENDOR_ID);
+        let subsystem_id = method.read16(OFFSET_TYPE0_SUBSYSTEM_ID);
         let expansion_rom = method.read32(OFFSET_TYPE0_EXPANSION);
 
         let t0 = PciConfigType0 {
@@ -242,13 +241,10 @@ impl PciConfig {
 
         let bar0 = method.read32(OFFSET_TYPE1_BAR0);
         let bar1 = method.read32(OFFSET_TYPE1_BAR1);
-
-        let value = method.read32(OFFSET_TYPE1_PRIMARY_BUS_NUM);
-        let primary_bus_number = extract_u8(value, 0);
-        let secondary_bus_number = extract_u8(value, 8);
-        let subordinate_bus_number = extract_u8(value, 16);
-        let secondary_latency_timer = extract_u8(value, 24);
-
+        let primary_bus_number = method.read8(OFFSET_TYPE1_PRIMARY_BUS_NUM);
+        let secondary_bus_number = method.read8(OFFSET_TYPE1_SECONDARY_BUS_NUM);
+        let subordinate_bus_number = method.read8(OFFSET_TYPE1_SUBORDINATE_BUS_NUM);
+        let secondary_latency_timer = method.read8(OFFSET_TYPE1_SECONDARY_LATENCY_TIMER);
         let expansion_rom = method.read32(OFFSET_TYPE1_EXPANSION);
 
         let t1 = PciConfigType1 {
@@ -684,14 +680,6 @@ impl HeaderType {
     fn get_type(&self) -> u8 {
         self.0 & 0x7F
     }
-}
-
-fn extract_u8(value: u32, shift: u8) -> u8 {
-    ((value >> shift) & 0x0000_00FF) as u8
-}
-
-fn extract_u16(value: u32, shift: u8) -> u16 {
-    ((value >> shift) & 0x0000_FFFF) as u16
 }
 
 #[cfg(test)]

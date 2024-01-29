@@ -14,10 +14,27 @@ impl IoPort {
         IoPort { bus, device, func }
     }
 
+    pub fn read8(&mut self, offset: u8) -> u8 {
+        let (addr, shift) = multiple4(offset);
+        let value = self.read32(addr);
+        ((value >> shift) & 0x0000_00FF) as u8
+    }
+
+    pub fn read16(&mut self, offset: u8) -> u16 {
+        let (addr, shift) = multiple4(offset);
+        let value = self.read32(addr);
+        ((value >> shift) & 0x0000_FFFF) as u16
+    }
+
     pub fn read32(&mut self, offset: u8) -> u32 {
         set_config(self.bus, self.device, self.func, offset);
         read32(CONFIG_DATA)
     }
+}
+
+fn multiple4(value: u8) -> (u8, u8) {
+    let r = value % 4;
+    (value - r, r * 8)
 }
 
 fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
