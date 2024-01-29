@@ -1,4 +1,5 @@
-use pci::{ids, PciConfig};
+use pci::io_port::IoPort;
+use pci::{ids, Method, PciConfig};
 use std::env;
 
 #[derive(Default)]
@@ -35,12 +36,12 @@ fn main() {
     }
 }
 
-fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig)> {
+fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig<IoPort>)> {
     let mut devs = vec![];
     let mut sub_buses = vec![];
 
     for device in 0..32 {
-        let v = pci::get_pci_config(bus, device, 0);
+        let v = pci::get_pci_config(IoPort::new(bus, device, 0));
         if let Some(v) = &v {
             devs.push((bus, device, 0, v.clone()));
 
@@ -50,7 +51,7 @@ fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig)> {
 
             if v.header_type().multi_function_device() {
                 for func in 1..8 {
-                    let v = pci::get_pci_config(bus, device, func);
+                    let v = pci::get_pci_config(IoPort::new(bus, device, func));
                     if let Some(v) = &v {
                         devs.push((bus, device, func, v.clone()));
 
@@ -71,7 +72,7 @@ fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig)> {
     devs
 }
 
-fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option) {
+fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, option: &Option) {
     print!("{:02x}:{:02x}.{} ", bus, device, func);
 
     let ccode = cfg.class_code();
@@ -233,7 +234,7 @@ fn print_device(bus: u8, device: u8, func: u8, cfg: &PciConfig, option: &Option)
             let cap = capability.unwrap();
             println!("        Capabilities: [{:02x}] {:?}", cap_next, cap.id());
             cap_next = cap.next_pointer();
-            capability = cap.next(cfg);
+            capability = cap.next();
         }
     }
 }

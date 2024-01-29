@@ -1,34 +1,38 @@
+use super::Method;
 use std::arch::asm;
 
 const CONFIG_ADDRESS: u16 = 0x0CF8;
 const CONFIG_DATA: u16 = 0x0CFC;
 
+#[derive(Clone, Debug)]
 pub struct IoPort {
     bus: u8,
     device: u8,
     func: u8,
 }
 
-impl IoPort {
-    pub fn new(bus: u8, device: u8, func: u8) -> Self {
-        IoPort { bus, device, func }
-    }
-
-    pub fn read8(&mut self, offset: u8) -> u8 {
+impl Method for IoPort {
+    fn read8(&self, offset: u8) -> u8 {
         let (addr, shift) = multiple4(offset);
         let value = self.read32(addr);
         ((value >> shift) & 0x0000_00FF) as u8
     }
 
-    pub fn read16(&mut self, offset: u8) -> u16 {
+    fn read16(&self, offset: u8) -> u16 {
         let (addr, shift) = multiple4(offset);
         let value = self.read32(addr);
         ((value >> shift) & 0x0000_FFFF) as u16
     }
 
-    pub fn read32(&mut self, offset: u8) -> u32 {
+    fn read32(&self, offset: u8) -> u32 {
         set_config(self.bus, self.device, self.func, offset);
         read32(CONFIG_DATA)
+    }
+}
+
+impl IoPort {
+    pub fn new(bus: u8, device: u8, func: u8) -> Self {
+        IoPort { bus, device, func }
     }
 }
 

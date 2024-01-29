@@ -3,7 +3,7 @@ pub mod ids;
 pub mod io_port;
 pub mod parser;
 
-use io_port::IoPort;
+use std::rc::Rc;
 
 const OFFSET_VENDOR_ID: u8 = 0x00;
 const OFFSET_DEVICE_ID: u8 = 0x02;
@@ -80,9 +80,7 @@ pub enum CapabilityId {
     FlatteningPortalBridge = 0x15,
 }
 
-pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
-    let mut method = IoPort::new(bus, device, func);
-
+pub fn get_pci_config<T: Method>(method: T) -> Option<PciConfig<T>> {
     let vendor_id = method.read16(OFFSET_VENDOR_ID);
     if vendor_id == NOT_USED {
         return None;
@@ -108,7 +106,7 @@ pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
     let interrupt_pin = method.read8(OFFSET_INTERRUPT_PIN);
 
     let config = PciConfig {
-        slot: (bus, device, func),
+        method: Rc::new(method),
         vendor_id,
         device_id,
         command: Command(command),
@@ -128,8 +126,8 @@ pub fn get_pci_config(bus: u8, device: u8, func: u8) -> Option<PciConfig> {
 }
 
 #[derive(Clone, Debug)]
-pub struct PciConfig {
-    slot: (u8, u8, u8),
+pub struct PciConfig<T: Method> {
+    method: Rc<T>,
     vendor_id: u16,
     device_id: u16,
     command: Command,
@@ -145,7 +143,7 @@ pub struct PciConfig {
     interrupt_pin: u8,
 }
 
-impl PciConfig {
+impl<T: Method> PciConfig<T> {
     pub fn vendor_id(&self) -> u16 {
         self.vendor_id
     }
@@ -203,18 +201,16 @@ impl PciConfig {
             return None;
         }
 
-        let mut method = IoPort::new(self.slot.0, self.slot.1, self.slot.2);
-
-        let bar0 = method.read32(OFFSET_TYPE0_BAR0);
-        let bar1 = method.read32(OFFSET_TYPE0_BAR1);
-        let bar2 = method.read32(OFFSET_TYPE0_BAR2);
-        let bar3 = method.read32(OFFSET_TYPE0_BAR3);
-        let bar4 = method.read32(OFFSET_TYPE0_BAR4);
-        let bar5 = method.read32(OFFSET_TYPE0_BAR5);
-        let cardbus_cis_pointer = method.read32(OFFSET_TYPE0_CARDBUS);
-        let subsystem_vendor_id = method.read16(OFFSET_TYPE0_SUBSYSTEM_VENDOR_ID);
-        let subsystem_id = method.read16(OFFSET_TYPE0_SUBSYSTEM_ID);
-        let expansion_rom = method.read32(OFFSET_TYPE0_EXPANSION);
+        let bar0 = self.method.read32(OFFSET_TYPE0_BAR0);
+        let bar1 = self.method.read32(OFFSET_TYPE0_BAR1);
+        let bar2 = self.method.read32(OFFSET_TYPE0_BAR2);
+        let bar3 = self.method.read32(OFFSET_TYPE0_BAR3);
+        let bar4 = self.method.read32(OFFSET_TYPE0_BAR4);
+        let bar5 = self.method.read32(OFFSET_TYPE0_BAR5);
+        let cardbus_cis_pointer = self.method.read32(OFFSET_TYPE0_CARDBUS);
+        let subsystem_vendor_id = self.method.read16(OFFSET_TYPE0_SUBSYSTEM_VENDOR_ID);
+        let subsystem_id = self.method.read16(OFFSET_TYPE0_SUBSYSTEM_ID);
+        let expansion_rom = self.method.read32(OFFSET_TYPE0_EXPANSION);
 
         let t0 = PciConfigType0 {
             bar0,
@@ -237,15 +233,13 @@ impl PciConfig {
             return None;
         }
 
-        let mut method = IoPort::new(self.slot.0, self.slot.1, self.slot.2);
-
-        let bar0 = method.read32(OFFSET_TYPE1_BAR0);
-        let bar1 = method.read32(OFFSET_TYPE1_BAR1);
-        let primary_bus_number = method.read8(OFFSET_TYPE1_PRIMARY_BUS_NUM);
-        let secondary_bus_number = method.read8(OFFSET_TYPE1_SECONDARY_BUS_NUM);
-        let subordinate_bus_number = method.read8(OFFSET_TYPE1_SUBORDINATE_BUS_NUM);
-        let secondary_latency_timer = method.read8(OFFSET_TYPE1_SECONDARY_LATENCY_TIMER);
-        let expansion_rom = method.read32(OFFSET_TYPE1_EXPANSION);
+        let bar0 = self.method.read32(OFFSET_TYPE1_BAR0);
+        let bar1 = self.method.read32(OFFSET_TYPE1_BAR1);
+        let primary_bus_number = self.method.read8(OFFSET_TYPE1_PRIMARY_BUS_NUM);
+        let secondary_bus_number = self.method.read8(OFFSET_TYPE1_SECONDARY_BUS_NUM);
+        let subordinate_bus_number = self.method.read8(OFFSET_TYPE1_SUBORDINATE_BUS_NUM);
+        let secondary_latency_timer = self.method.read8(OFFSET_TYPE1_SECONDARY_LATENCY_TIMER);
+        let expansion_rom = self.method.read32(OFFSET_TYPE1_EXPANSION);
 
         let t1 = PciConfigType1 {
             bar0,
@@ -260,10 +254,10 @@ impl PciConfig {
         Some(t1)
     }
 
-    pub fn capability(&self) -> Option<PciCapability> {
+    pub fn capability(&self) -> Option<PciCapability<T>> {
         let value = (self.capabilities_pointer as u32) << 8;
-        let cap = PciCapability::from(value);
-        cap.next(self)
+        let cap = PciCapability::from(self.method.clone(), value);
+        cap.next()
     }
 }
 
@@ -471,14 +465,16 @@ impl PciBaseAddress {
 }
 
 #[derive(Clone, Debug)]
-pub struct PciCapability {
+pub struct PciCapability<T: Method> {
+    method: Rc<T>,
     id: u8,
     next_pointer: u8,
 }
 
-impl PciCapability {
-    pub fn from(value: u32) -> Self {
+impl<T: Method> PciCapability<T> {
+    pub fn from(method: Rc<T>, value: u32) -> Self {
         PciCapability {
+            method,
             id: (value & 0x0000_00FF) as u8,
             next_pointer: ((value & 0x0000_FF00) >> 8) as u8,
         }
@@ -516,13 +512,12 @@ impl PciCapability {
         self.next_pointer
     }
 
-    pub fn next(&self, config: &PciConfig) -> Option<PciCapability> {
+    pub fn next(&self) -> Option<PciCapability<T>> {
         if self.next_pointer == 0 {
             None
         } else {
-            let mut method = IoPort::new(config.slot.0, config.slot.1, config.slot.2);
-            let data = method.read32(self.next_pointer);
-            Some(PciCapability::from(data))
+            let data = self.method.read32(self.next_pointer);
+            Some(PciCapability::from(self.method.clone(), data))
         }
     }
 }
@@ -680,6 +675,14 @@ impl HeaderType {
     fn get_type(&self) -> u8 {
         self.0 & 0x7F
     }
+}
+
+pub trait Method {
+    fn read8(&self, offset: u8) -> u8;
+
+    fn read16(&self, offset: u8) -> u16;
+
+    fn read32(&self, offset: u8) -> u32;
 }
 
 #[cfg(test)]
