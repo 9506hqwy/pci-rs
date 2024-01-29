@@ -48,7 +48,7 @@ fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig)> {
                 sub_buses.push(t1.secondary_bus_number());
             }
 
-            if v.header_type().multi_functoin_device() {
+            if v.header_type().multi_function_device() {
                 for func in 1..8 {
                     let v = pci::get_pci_config(bus, device, func);
                     if let Some(v) = &v {

@@ -668,7 +668,7 @@ impl HeaderType {
         self.get_type() == 1
     }
 
-    pub fn multi_functoin_device(&self) -> bool {
+    pub fn multi_function_device(&self) -> bool {
         self.get_bool(7)
     }
 
