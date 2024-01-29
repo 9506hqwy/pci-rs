@@ -1,6 +1,24 @@
 use std::arch::asm;
 
-pub fn read8(address: u16) -> u8 {
+const CONFIG_ADDRESS: u16 = 0x0CF8;
+const CONFIG_DATA: u16 = 0x0CFC;
+
+pub fn read(bus: u8, device: u8, func: u8, offset: u8) -> u32 {
+    set_config(bus, device, func, offset);
+    read32(CONFIG_DATA)
+}
+
+fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
+    let mut config: u32 = 0;
+    config |= offset as u32; // offset is only multiple of 4.
+    config |= (func as u32) << 8;
+    config |= (device as u32) << 11;
+    config |= (bus as u32) << 16;
+    config |= 0x8000_0000;
+    write32(CONFIG_ADDRESS, config);
+}
+
+fn read8(address: u16) -> u8 {
     let mut ret: u8;
     unsafe {
         asm!(
@@ -13,7 +31,7 @@ pub fn read8(address: u16) -> u8 {
     ret
 }
 
-pub fn write8(address: u16, value: u8) {
+fn write8(address: u16, value: u8) {
     unsafe {
         asm!(
             "outb %al, %dx",
@@ -24,7 +42,7 @@ pub fn write8(address: u16, value: u8) {
     }
 }
 
-pub fn read16(address: u16) -> u16 {
+fn read16(address: u16) -> u16 {
     let mut ret: u16;
     unsafe {
         asm!(
@@ -37,7 +55,7 @@ pub fn read16(address: u16) -> u16 {
     ret
 }
 
-pub fn write16(address: u16, value: u16) {
+fn write16(address: u16, value: u16) {
     unsafe {
         asm!(
             "outw %ax, %dx",
@@ -48,7 +66,7 @@ pub fn write16(address: u16, value: u16) {
     }
 }
 
-pub fn read32(address: u16) -> u32 {
+fn read32(address: u16) -> u32 {
     let mut ret: u32;
     unsafe {
         asm!(
@@ -61,7 +79,7 @@ pub fn read32(address: u16) -> u32 {
     ret
 }
 
-pub fn write32(address: u16, value: u32) {
+fn write32(address: u16, value: u32) {
     unsafe {
         asm!(
             "outl %eax, %dx",
