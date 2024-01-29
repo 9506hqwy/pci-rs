@@ -3,9 +3,21 @@ use std::arch::asm;
 const CONFIG_ADDRESS: u16 = 0x0CF8;
 const CONFIG_DATA: u16 = 0x0CFC;
 
-pub fn read(bus: u8, device: u8, func: u8, offset: u8) -> u32 {
-    set_config(bus, device, func, offset);
-    read32(CONFIG_DATA)
+pub struct IoPort {
+    bus: u8,
+    device: u8,
+    func: u8,
+}
+
+impl IoPort {
+    pub fn new(bus: u8, device: u8, func: u8) -> Self {
+        IoPort { bus, device, func }
+    }
+
+    pub fn read32(&mut self, offset: u8) -> u32 {
+        set_config(self.bus, self.device, self.func, offset);
+        read32(CONFIG_DATA)
+    }
 }
 
 fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
