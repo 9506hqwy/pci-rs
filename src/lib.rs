@@ -1,3 +1,4 @@
+pub mod ecam;
 pub mod error;
 pub mod ids;
 pub mod io_port;
@@ -677,7 +678,9 @@ impl HeaderType {
     }
 }
 
-pub trait Method {
+pub trait Method: Sized + Clone {
+    fn try_from(bus: u8, device: u8, func: u8) -> Result<Self, error::Error>;
+
     fn read8(&self, offset: u8) -> u8;
 
     fn read16(&self, offset: u8) -> u16;

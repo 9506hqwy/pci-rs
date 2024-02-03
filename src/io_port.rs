@@ -1,3 +1,4 @@
+use super::error;
 use super::Method;
 use std::arch::asm;
 
@@ -12,6 +13,10 @@ pub struct IoPort {
 }
 
 impl Method for IoPort {
+    fn try_from(bus: u8, device: u8, func: u8) -> Result<Self, error::Error> {
+        Ok(IoPort { bus, device, func })
+    }
+
     fn read8(&self, offset: u8) -> u8 {
         let (addr, shift) = multiple4(offset);
         let value = self.read32(addr);
@@ -27,12 +32,6 @@ impl Method for IoPort {
     fn read32(&self, offset: u8) -> u32 {
         set_config(self.bus, self.device, self.func, offset);
         read32(CONFIG_DATA)
-    }
-}
-
-impl IoPort {
-    pub fn new(bus: u8, device: u8, func: u8) -> Self {
-        IoPort { bus, device, func }
     }
 }
 

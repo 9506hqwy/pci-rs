@@ -1,3 +1,4 @@
+use pci::ecam::{self, Ecam};
 use pci::io_port::IoPort;
 use pci::{ids, Method, PciConfig};
 use std::env;
@@ -26,22 +27,22 @@ fn main() {
         }
     }
 
-    unsafe { libc::iopl(3) };
-
-    let mut devices = scan_device(0);
-    devices.sort_by_key(|d| d.0);
-
-    for (bus, device, func, v) in devices {
-        print_device(bus, device, func, &v, &option);
+    if ecam::support() {
+        let devices = scan_device::<Ecam>(0);
+        print_devices(devices, &option);
+    } else {
+        unsafe { libc::iopl(3) };
+        let devices = scan_device::<IoPort>(0);
+        print_devices(devices, &option);
     }
 }
 
-fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig<IoPort>)> {
+fn scan_device<T: Method>(bus: u8) -> Vec<(u8, u8, u8, PciConfig<T>)> {
     let mut devs = vec![];
     let mut sub_buses = vec![];
 
     for device in 0..32 {
-        let v = pci::get_pci_config(IoPort::new(bus, device, 0));
+        let v = pci::get_pci_config(T::try_from(bus, device, 0).unwrap());
         if let Some(v) = &v {
             devs.push((bus, device, 0, v.clone()));
 
@@ -51,7 +52,7 @@ fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig<IoPort>)> {
 
             if v.header_type().multi_function_device() {
                 for func in 1..8 {
-                    let v = pci::get_pci_config(IoPort::new(bus, device, func));
+                    let v = pci::get_pci_config(T::try_from(bus, device, func).unwrap());
                     if let Some(v) = &v {
                         devs.push((bus, device, func, v.clone()));
 
@@ -70,6 +71,14 @@ fn scan_device(bus: u8) -> Vec<(u8, u8, u8, PciConfig<IoPort>)> {
     }
 
     devs
+}
+
+fn print_devices<T: Method>(mut devices: Vec<(u8, u8, u8, PciConfig<T>)>, option: &Option) {
+    devices.sort_by_key(|d| d.0);
+
+    for (bus, device, func, v) in devices {
+        print_device(bus, device, func, &v, option);
+    }
 }
 
 fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, option: &Option) {
