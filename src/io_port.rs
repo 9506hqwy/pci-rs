@@ -50,6 +50,7 @@ fn set_config(bus: u8, device: u8, func: u8, offset: u8) {
     write32(CONFIG_ADDRESS, config);
 }
 
+#[allow(dead_code)]
 fn read8(address: u16) -> u8 {
     let mut ret: u8;
     unsafe {
@@ -63,6 +64,7 @@ fn read8(address: u16) -> u8 {
     ret
 }
 
+#[allow(dead_code)]
 fn write8(address: u16, value: u8) {
     unsafe {
         asm!(
@@ -74,6 +76,7 @@ fn write8(address: u16, value: u8) {
     }
 }
 
+#[allow(dead_code)]
 fn read16(address: u16) -> u16 {
     let mut ret: u16;
     unsafe {
@@ -87,6 +90,7 @@ fn read16(address: u16) -> u16 {
     ret
 }
 
+#[allow(dead_code)]
 fn write16(address: u16, value: u16) {
     unsafe {
         asm!(
