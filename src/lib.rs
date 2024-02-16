@@ -1,8 +1,10 @@
-pub mod ecam;
 pub mod error;
 pub mod ids;
 pub mod io_port;
 pub mod parser;
+
+#[cfg(target_family = "unix")]
+pub mod ecam;
 
 use std::rc::Rc;
 

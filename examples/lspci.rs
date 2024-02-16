@@ -1,7 +1,9 @@
-use pci::ecam::{self, Ecam};
 use pci::io_port::IoPort;
 use pci::{ids, Method, PciConfig};
 use std::env;
+
+#[cfg(target_family = "unix")]
+use pci::ecam::{self, Ecam};
 
 #[derive(Default)]
 struct Option {
@@ -27,14 +29,19 @@ fn main() {
         }
     }
 
+    #[cfg(target_family = "unix")]
     if ecam::support() {
         let devices = scan_device::<Ecam>(0);
         print_devices(devices, &option);
-    } else {
-        unsafe { libc::iopl(3) };
-        let devices = scan_device::<IoPort>(0);
-        print_devices(devices, &option);
+        return;
     }
+
+    #[cfg(target_family = "unix")]
+    unsafe {
+        libc::iopl(3)
+    };
+    let devices = scan_device::<IoPort>(0);
+    print_devices(devices, &option);
 }
 
 fn scan_device<T: Method>(bus: u8) -> Vec<(u8, u8, u8, PciConfig<T>)> {
