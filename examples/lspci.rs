@@ -5,6 +5,9 @@ use std::env;
 #[cfg(target_family = "unix")]
 use pci::ecam::{self, Ecam};
 
+#[cfg(target_family = "windows")]
+use pci::cfgmgr32::{self, Cfgmgr32};
+
 #[derive(Default)]
 struct Option {
     n: bool,
@@ -32,6 +35,13 @@ fn main() {
     #[cfg(target_family = "unix")]
     if ecam::support() {
         let devices = scan_device::<Ecam>(0);
+        print_devices(devices, &option);
+        return;
+    }
+
+    #[cfg(target_family = "windows")]
+    if cfgmgr32::support() {
+        let devices = scan_device::<Cfgmgr32>(0);
         print_devices(devices, &option);
         return;
     }
@@ -93,26 +103,38 @@ fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, op
 
     let ccode = cfg.class_code();
     let base_class = ids::get_class(ccode.base_class()).unwrap();
-    let sub_class = base_class.get_sub_class(ccode.sub_class()).unwrap();
-    if option.n {
-        print!("{:02x}{:02x}: ", base_class.id(), sub_class.id());
-    } else {
-        print!("{}", sub_class.name());
-        if option.nn {
-            print!(" [{:02x}{:02x}]", base_class.id(), sub_class.id());
-        }
+    match base_class.get_sub_class(ccode.sub_class()) {
+        Some(sub_class) => {
+            if option.n {
+                print!("{:02x}{:02x}: ", base_class.id(), sub_class.id());
+            } else {
+                print!("{}", sub_class.name());
+                if option.nn {
+                    print!(" [{:02x}{:02x}]", base_class.id(), sub_class.id());
+                }
 
-        print!(": ")
+                print!(": ")
+            }
+        }
+        _ => {
+            print!("{:02x}{:02x}: ", base_class.id(), ccode.sub_class());
+        }
     }
 
     let vendor = ids::get_vendor(cfg.vendor_id()).unwrap();
-    let device = vendor.get_device(cfg.device_id()).unwrap();
-    if option.n {
-        print!("{:04x}:{:04x}", vendor.id(), device.id());
-    } else {
-        print!("{} {}", vendor.name(), device.name());
-        if option.nn {
-            print!(" [{:04x}:{:04x}]", vendor.id(), device.id());
+    match vendor.get_device(cfg.device_id()) {
+        Some(device) => {
+            if option.n {
+                print!("{:04x}:{:04x}", vendor.id(), device.id());
+            } else {
+                print!("{} {}", vendor.name(), device.name());
+                if option.nn {
+                    print!(" [{:04x}:{:04x}]", vendor.id(), device.id());
+                }
+            }
+        }
+        _ => {
+            print!("{:04x}:{:04x}", vendor.id(), cfg.device_id());
         }
     }
 
@@ -175,17 +197,27 @@ fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, op
 
     if let Some(t0) = cfg.get_type0_header() {
         if t0.subsystem_vendor_id() != 0 {
-            if let Some(subsystem) =
-                device.get_subsystem(t0.subsystem_vendor_id(), t0.subsystem_id())
-            {
-                println!("        Subsystem: {} {}", vendor.name(), subsystem.name());
+            if let Some(device) = vendor.get_device(cfg.device_id()) {
+                if let Some(subsystem) =
+                    device.get_subsystem(t0.subsystem_vendor_id(), t0.subsystem_id())
+                {
+                    println!("        Subsystem: {} {}", vendor.name(), subsystem.name());
+                } else {
+                    match ids::get_vendor(t0.subsystem_vendor_id()) {
+                        Some(subsystem) => {
+                            println!(
+                                "        Subsystem: {} Device {:04x}",
+                                subsystem.name(),
+                                t0.subsystem_id()
+                            );
+                        }
+                        _ => {
+                            println!("        Subsystem: {:04x}", t0.subsystem_vendor_id());
+                        }
+                    }
+                }
             } else {
-                let subsystem = ids::get_vendor(t0.subsystem_vendor_id()).unwrap();
-                println!(
-                    "        Subsystem: {} Device {:04x}",
-                    subsystem.name(),
-                    t0.subsystem_id()
-                );
+                println!("        Subsystem: {} {}", vendor.name(), t0.subsystem_id());
             }
         }
 
