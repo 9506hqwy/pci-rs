@@ -16,6 +16,6 @@ impl From<std::io::Error> for Error {
 
 impl<'a> From<nom::Err<nom::error::Error<&'a str>>> for Error {
     fn from(error: nom::Err<nom::error::Error<&'a str>>) -> Self {
-        Error::Parse(format!("{}", error))
+        Error::Parse(format!("{error}"))
     }
 }

@@ -1,13 +1,13 @@
 use super::error::Error;
 use super::ids::{BaseClass, Device, ProgIf, SubClass, SubSystem, Vendor};
 use nom::{
+    IResult,
     branch::alt,
     bytes::complete::{tag, take_until, take_until1},
     character::complete::hex_digit1,
     combinator::map,
     multi::{many0, many1},
     sequence::{preceded, tuple},
-    IResult,
 };
 
 pub fn parse(input: &str) -> Result<(Vec<Vendor>, Vec<BaseClass>), Error> {

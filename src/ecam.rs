@@ -1,5 +1,5 @@
-use super::error;
 use super::Method;
+use super::error;
 use acpi::MemoryMappedConfiguration;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use libc;

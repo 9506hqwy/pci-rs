@@ -1,5 +1,5 @@
 use pci::io_port::IoPort;
-use pci::{ids, Method, PciConfig};
+use pci::{Method, PciConfig, ids};
 use std::env;
 
 #[cfg(target_family = "unix")]
@@ -99,7 +99,7 @@ fn print_devices<T: Method>(mut devices: Vec<(u8, u8, u8, PciConfig<T>)>, option
 }
 
 fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, option: &Option) {
-    print!("{:02x}:{:02x}.{} ", bus, device, func);
+    print!("{bus:02x}:{device:02x}.{func} ");
 
     let ccode = cfg.class_code();
     let base_class = ids::get_class(ccode.base_class()).unwrap();
@@ -149,39 +149,41 @@ fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, op
     }
 
     let cmd = cfg.command();
-    println!("        Control: I/O{} Mem{} BusMaster{} SpecCycle{} MemWINV{} VGASnoop{} ParErr{} Stepping{} SERR{} FastB2B{} DisINTx{}",
-             flag(cmd.io_space_enable()),
-             flag(cmd.memory_space_enable()),
-             flag(cmd.bus_master_enable()),
-             flag(cmd.special_cycle_enable()),
-             flag(cmd.memory_write_and_invalidate()),
-             flag(cmd.vga_palette_snoop()),
-             flag(cmd.parity_error_response()),
-             flag(cmd.idsel_stepping_wait_cycle_control()),
-             flag(cmd.serr_enable()),
-             flag(cmd.fast_back_to_back_transactions_enable()),
-             flag(cmd.interrupt_disable()),
+    println!(
+        "        Control: I/O{} Mem{} BusMaster{} SpecCycle{} MemWINV{} VGASnoop{} ParErr{} Stepping{} SERR{} FastB2B{} DisINTx{}",
+        flag(cmd.io_space_enable()),
+        flag(cmd.memory_space_enable()),
+        flag(cmd.bus_master_enable()),
+        flag(cmd.special_cycle_enable()),
+        flag(cmd.memory_write_and_invalidate()),
+        flag(cmd.vga_palette_snoop()),
+        flag(cmd.parity_error_response()),
+        flag(cmd.idsel_stepping_wait_cycle_control()),
+        flag(cmd.serr_enable()),
+        flag(cmd.fast_back_to_back_transactions_enable()),
+        flag(cmd.interrupt_disable()),
     );
 
     let status = cfg.status();
-    println!("        Status: Cap{} 66MHz{} UDF{} FastB2B{} ParErr{} DEVSEL={} >TAbort{} <TAbort{} <MAbort{} >SERR{} <PERR{} INTx{}",
-             flag(status.capabilities_list()),
-             flag(status.mhz_66_capable()),
-             flag(status.user_definable_features()),
-             flag(status.fast_back_to_back_transactions_capable()),
-             flag(status.master_data_parity_error()),
-             match status.devsel_timing() {
-                 0 => "fast",
-                 1 => "medium",
-                 2 => "slow",
-                 _ => "",
-             },
-             flag(status.signaled_target_abort()),
-             flag(status.received_target_abort()),
-             flag(status.signaled_system_error()),
-             flag(status.received_master_abort()),
-             flag(status.detected_parity_error()),
-             flag(status.interrupt_status()),
+    println!(
+        "        Status: Cap{} 66MHz{} UDF{} FastB2B{} ParErr{} DEVSEL={} >TAbort{} <TAbort{} <MAbort{} >SERR{} <PERR{} INTx{}",
+        flag(status.capabilities_list()),
+        flag(status.mhz_66_capable()),
+        flag(status.user_definable_features()),
+        flag(status.fast_back_to_back_transactions_capable()),
+        flag(status.master_data_parity_error()),
+        match status.devsel_timing() {
+            0 => "fast",
+            1 => "medium",
+            2 => "slow",
+            _ => "",
+        },
+        flag(status.signaled_target_abort()),
+        flag(status.received_target_abort()),
+        flag(status.signaled_system_error()),
+        flag(status.received_master_abort()),
+        flag(status.detected_parity_error()),
+        flag(status.interrupt_status()),
     );
 
     if cmd.bus_master_enable() {
@@ -288,9 +290,5 @@ fn print_device<T: Method>(bus: u8, device: u8, func: u8, cfg: &PciConfig<T>, op
 }
 
 fn flag(f: bool) -> &'static str {
-    if f {
-        "+"
-    } else {
-        "-"
-    }
+    if f { "+" } else { "-" }
 }

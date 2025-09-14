@@ -1,5 +1,5 @@
 use super::{
-    error, Method, NOT_USED, OFFSET_BASE_CLASS, OFFSET_BIST, OFFSET_CACHE_LINE_SIZE,
+    Method, NOT_USED, OFFSET_BASE_CLASS, OFFSET_BIST, OFFSET_CACHE_LINE_SIZE,
     OFFSET_CAPABILITIES_POINTER, OFFSET_COMMAND, OFFSET_DEVICE_ID, OFFSET_HEADER_TYPE,
     OFFSET_INTERRUPT_LINE, OFFSET_INTERRUPT_PIN, OFFSET_MASTER_LATENCY_TIMER, OFFSET_PROG_INTF,
     OFFSET_REVISION_ID, OFFSET_STATUS, OFFSET_SUB_CLASS, OFFSET_TYPE0_BAR0, OFFSET_TYPE0_BAR1,
@@ -7,23 +7,23 @@ use super::{
     OFFSET_TYPE0_CARDBUS, OFFSET_TYPE0_EXPANSION, OFFSET_TYPE0_SUBSYSTEM_ID,
     OFFSET_TYPE0_SUBSYSTEM_VENDOR_ID, OFFSET_TYPE1_EXPANSION, OFFSET_TYPE1_PRIMARY_BUS_NUM,
     OFFSET_TYPE1_SECONDARY_BUS_NUM, OFFSET_TYPE1_SECONDARY_LATENCY_TIMER,
-    OFFSET_TYPE1_SUBORDINATE_BUS_NUM, OFFSET_VENDOR_ID,
+    OFFSET_TYPE1_SUBORDINATE_BUS_NUM, OFFSET_VENDOR_ID, error,
 };
 use bytes::{Buf, Bytes};
 use std::sync::OnceLock;
-use windows::core::{Error, PCSTR};
 use windows::Win32::Devices::DeviceAndDriverInstallation::{
-    CM_Get_DevNode_PropertyW, CM_Get_Device_ID_ListA, CM_Get_Device_ID_List_SizeA,
-    CM_Locate_DevNodeA, CM_MapCrToWin32Err, CM_GETIDLIST_FILTER_ENUMERATOR,
-    CM_GETIDLIST_FILTER_PRESENT, CM_LOCATE_DEVNODE_NORMAL, CR_BUFFER_SMALL, CR_SUCCESS,
+    CM_GETIDLIST_FILTER_ENUMERATOR, CM_GETIDLIST_FILTER_PRESENT, CM_Get_DevNode_PropertyW,
+    CM_Get_Device_ID_List_SizeA, CM_Get_Device_ID_ListA, CM_LOCATE_DEVNODE_NORMAL,
+    CM_Locate_DevNodeA, CM_MapCrToWin32Err, CR_BUFFER_SMALL, CR_SUCCESS,
 };
 use windows::Win32::Devices::FunctionDiscovery::{
     PKEY_Device_Address, PKEY_Device_BusNumber, PKEY_Device_BusRelations, PKEY_Device_HardwareIds,
 };
 use windows::Win32::Devices::Properties::{DEVPROPKEY, DEVPROPTYPE};
 use windows::Win32::Foundation::{ERROR_INVALID_DATA, WIN32_ERROR};
-use windows::Win32::Globalization::{WideCharToMultiByte, CP_ACP, WC_COMPOSITECHECK};
+use windows::Win32::Globalization::{CP_ACP, WC_COMPOSITECHECK, WideCharToMultiByte};
 use windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY;
+use windows::core::{Error, PCSTR};
 
 static IDS: OnceLock<Vec<DevNode>> = OnceLock::new();
 

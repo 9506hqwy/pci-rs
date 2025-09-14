@@ -1,5 +1,5 @@
-use super::error;
 use super::Method;
+use super::error;
 use std::arch::asm;
 
 const CONFIG_ADDRESS: u16 = 0x0CF8;
