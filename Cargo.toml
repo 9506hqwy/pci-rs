@@ -12,7 +12,7 @@ categories = ["development-tools"]
 [dependencies]
 acpi = { git = "https://github.com/9506hqwy/acpi-rs" }
 bytes = "1.5.0"
-nom = "7.1.3"
+nom = "8.0.0"
 once_cell = "1.13.0"
 
 [target.'cfg(unix)'.dependencies.libc]
