@@ -19,16 +19,15 @@ use windows::Win32::Devices::DeviceAndDriverInstallation::{
 use windows::Win32::Devices::FunctionDiscovery::{
     PKEY_Device_Address, PKEY_Device_BusNumber, PKEY_Device_BusRelations, PKEY_Device_HardwareIds,
 };
-use windows::Win32::Devices::Properties::{DEVPROPKEY, DEVPROPTYPE};
-use windows::Win32::Foundation::{ERROR_INVALID_DATA, WIN32_ERROR};
+use windows::Win32::Devices::Properties::DEVPROPTYPE;
+use windows::Win32::Foundation::{DEVPROPKEY, ERROR_INVALID_DATA, PROPERTYKEY, WIN32_ERROR};
 use windows::Win32::Globalization::{CP_ACP, WC_COMPOSITECHECK, WideCharToMultiByte};
-use windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY;
 use windows::core::{Error, PCSTR};
 
 static IDS: OnceLock<Vec<DevNode>> = OnceLock::new();
 
 pub fn support() -> bool {
-    get_dev_nodes().len() != 0
+    !get_dev_nodes().is_empty()
 }
 
 #[derive(Clone, Debug)]
@@ -436,7 +435,7 @@ fn wide_to_multi(value: &mut Bytes) -> Result<Bytes, Error> {
     let size =
         unsafe { WideCharToMultiByte(CP_ACP, WC_COMPOSITECHECK, &wide, None, PCSTR::null(), None) };
     if size == 0 {
-        return Err(Error::from_win32());
+        return Err(Error::from_thread());
     }
 
     let mut buffer = vec![0u8; size as usize];
@@ -452,7 +451,7 @@ fn wide_to_multi(value: &mut Bytes) -> Result<Bytes, Error> {
         )
     };
     if size == 0 {
-        return Err(Error::from_win32());
+        return Err(Error::from_thread());
     }
 
     Ok(Bytes::from(buffer))
